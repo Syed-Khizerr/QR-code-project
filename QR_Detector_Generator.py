@@ -6,6 +6,7 @@ from PIL import Image, ImageTk
 from tkinter import messagebox, filedialog
 import base64
 import re
+from roboflow import 
 
 def read_qr():
     print(file_variable.get())
@@ -55,14 +56,6 @@ def load_image(file_path):
     image_label.config(image=img_tk)
     image_label.image = img_tk  # Keep a reference to avoid garbage collection
 
-    try:
-        read_button.destroy()
-        read_button = None
-    except:
-        pass
-
-    read_button = ttk.Button(tab2, text = 'Read', command = read_qr)
-    read_button.pack(pady =5)
 
 def generate_qr():
      # Ensure the save location directory exists
@@ -156,8 +149,8 @@ image_label.pack()
 
 file_entry.bind('<Return>', lambda event : load_image(file_variable.get()))
 
-# read_button = ttk.Button(tab2, text = 'Read', command = read_qr)
-# read_button.pack(pady =5)
+read_button = ttk.Button(tab2, text = 'Read', command = read_qr)
+read_button.pack(pady =5)
 
 notebook.add(tab1, text = 'Generate')
 notebook.add(tab2, text = 'Read')
