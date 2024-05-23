@@ -15,12 +15,12 @@ import numpy as np
 
 rf = Roboflow(api_key="y5zU37hfUfMNhr3EQxvN")
 project = rf.workspace("qr-code-detection").project("qr-detection-5qieq")
-version = project.version(3)
+version = project.version(4)
 dataset = version.download("yolov7")
 
 
 
-model = project.version(3).model
+model = project.version(4).model
 
 def convert_png_to_jpg(file_path):
     """
