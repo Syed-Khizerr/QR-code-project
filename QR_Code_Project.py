@@ -11,6 +11,7 @@ import cv2
 from pyzbar.pyzbar import decode as qr_decode
 from roboflow import Roboflow
 import numpy as np
+import webbrowser
 
 
 rf = Roboflow(api_key="y5zU37hfUfMNhr3EQxvN")
@@ -21,6 +22,8 @@ dataset = version.download("yolov7")
 
 
 model = project.version(4).model
+
+
 
 def convert_png_to_jpg(file_path):
     """
@@ -69,7 +72,47 @@ def read_qr(path):
 
     roi = img[roi_y:roi_y+roi_height, roi_x:roi_x+roi_width]
 
-    messagebox.showinfo('QR Data:',decoder(roi))
+    global output_text
+
+    output_text = ['QR Data:', decoder(roi)]
+
+    display_output(output_text)
+
+    messagebox.showinfo('QR Data:' , output_text[1])
+
+def on_enter(event):
+    output_textbox.config(foreground="blue", cursor="hand2")
+
+def on_leave(event):
+    output_textbox.config(foreground="black", cursor="")
+
+def on_click(event):
+
+    if is_link(output_text[1]):
+        
+        open_link(output_text[1])
+    else:
+        copy_to_clipboard(output_text[1])
+
+def is_link(text):
+    # Regex pattern for matching URLs
+    pattern = r'\b((?:(https?|ftp)://)?(?:[\w\-]+\.)+[a-z]{2,6}(?:/[\w\-./?%&=]*)?)\b'
+    if re.match(pattern, text):
+        return True
+    else:
+        return False
+
+def copy_to_clipboard(event):
+    # Clear the clipboard
+    scrollable_frame.clipboard_clear()
+    # Append the label's text to the clipboard
+    scrollable_frame.clipboard_append(output_text[1])
+    # Notify the user (optional)
+    messagebox.showinfo('Link/Text copied', "Text copied to clipboard!")
+
+def open_link(link):
+
+    webbrowser.open_new(link)
 
 def decoder(image):
     gray_img = cv2.cvtColor(image,0)
@@ -77,6 +120,12 @@ def decoder(image):
 
     qrCodeData = qr.data.decode("utf-8")
     return qrCodeData
+
+def display_output(output):
+    output_textbox.config(state=tk.NORMAL)
+    output_textbox.delete("1.0", tk.END)
+    output_textbox.insert(tk.END, output)
+    output_textbox.config(state=tk.DISABLED)
 
 def convert(file):
     # Define the regex patterns for text and image files
@@ -192,7 +241,7 @@ location1.pack(pady=5)
 
 label4 = ttk.Label(tab1, text='Enter a name for QR', font='Calibri 15')
 label4.pack(pady=5)
-created_file = tk.StringVar(value="Enter File name")
+created_file = tk.StringVar()
 file_name_creation = ttk.Entry(tab1, textvariable=created_file, width=50, font='Calibri 12')
 file_name_creation.pack(pady=5)
 
@@ -241,6 +290,15 @@ file_entry.bind('<Return>', lambda event: load_image(file_variable.get()))
 
 read_button = ttk.Button(scrollable_frame, text='Read', command=lambda: read_qr(file_variable.get()))
 read_button.pack(pady=20)
+
+# Text widget for displaying output (multiline)
+output_textbox = tk.Text(scrollable_frame, height=10, wrap="word", font='Calibri 12', borderwidth=2, relief="sunken")
+output_textbox.pack(pady=10, fill='both', expand=True)
+output_textbox.config(state=tk.DISABLED)
+
+output_textbox.bind("<Enter>", on_enter)
+output_textbox.bind("<Leave>", on_leave)
+output_textbox.bind("<Button-1>", on_click)
 
 # Add tabs to the notebook
 notebook.add(tab1, text='Generate')
