@@ -6,7 +6,6 @@ from PIL import Image, ImageTk
 from tkinter import messagebox, filedialog
 import base64
 import re
-# from roboflow_access import RoboflowHelper
 import cv2
 from pyzbar.pyzbar import decode as qr_decode
 from roboflow import Roboflow
@@ -50,14 +49,14 @@ def convert_png_to_jpg(file_path):
         rgb_image.save(new_file_path, 'JPEG')
         
         print(f"Converted {file_path} to {new_file_path}")
-        return new_file_path
+        return new_file_path, 1
     else:
         print(f"{file_path} is not a PNG file. No conversion needed.")
-        return file_path
+        return file_path, 0
 
 
 def read_qr(path):
-    file_path = convert_png_to_jpg(path)
+    file_path, value = convert_png_to_jpg(path)
 
     image = Image.open(file_path)
     img = np.array(image)
@@ -79,6 +78,10 @@ def read_qr(path):
     display_output(output_text)
 
     messagebox.showinfo('QR Data:' , output_text[1])
+
+    if value == 1:
+        os.remove(file_path)
+
 
 def on_enter(event):
     output_textbox.config(foreground="blue", cursor="hand2")
@@ -132,10 +135,11 @@ def convert(file):
     text_file_pattern = re.compile(r'.*\.txt$', re.IGNORECASE)
     image_file_pattern = re.compile(r'.*\.png$', re.IGNORECASE)
     image_file_pattern1 = re.compile(r'.*\.jpg$', re.IGNORECASE)
+    image_file_pattern2 = re.compile(r'.*\.jpeg$', re.IGNORECASE)
    
     if text_file_pattern.match(file):
         return text_to_string(content1.get())
-    elif image_file_pattern.match(file) or image_file_pattern1.match(file):
+    elif image_file_pattern.match(file) or image_file_pattern1.match(file) or image_file_pattern2.match(file):
         return image_to_base64(content1.get())
     else:
         return file
