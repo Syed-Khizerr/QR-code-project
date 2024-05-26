@@ -43,7 +43,7 @@ def convert_png_to_jpg(file_path):
         rgb_image = png_image.convert('RGB')
         
         # Create the new file path with a .jpg extension
-        new_file_path = file_path[:-4] + '.jpg'
+        new_file_path = file_path[:-4] + '_converted_qrproject' + '.jpg'
         
         # Save the image in JPG format
         rgb_image.save(new_file_path, 'JPEG')
