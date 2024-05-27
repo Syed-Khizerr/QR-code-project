@@ -127,7 +127,7 @@ def decoder(image):
 def display_output(output):
     output_textbox.config(state=tk.NORMAL)
     output_textbox.delete("1.0", tk.END)
-    output_textbox.insert(tk.END, output)
+    output_textbox.insert(tk.END, output[1])
     output_textbox.config(state=tk.DISABLED)
 
 def convert(file):
