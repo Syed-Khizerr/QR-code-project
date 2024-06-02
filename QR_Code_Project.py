@@ -6,21 +6,19 @@ from PIL import Image, ImageTk
 from tkinter import messagebox, filedialog
 import base64
 import re
-# from roboflow_access import RoboflowHelper
 import cv2
 from pyzbar.pyzbar import decode as qr_decode
 from roboflow import Roboflow
 import numpy as np
-
+import webbrowser
 
 rf = Roboflow(api_key="y5zU37hfUfMNhr3EQxvN")
 project = rf.workspace("qr-code-detection").project("qr-detection-5qieq")
 version = project.version(4)
 dataset = version.download("yolov7")
 
-
-
 model = project.version(4).model
+
 
 def convert_png_to_jpg(file_path):
     """
@@ -36,61 +34,118 @@ def convert_png_to_jpg(file_path):
     if file_path.lower().endswith('.png'):
         # Open the PNG image
         png_image = Image.open(file_path)
-        
+
         # Convert the image to RGB mode (necessary for JPG format)
         rgb_image = png_image.convert('RGB')
-        
+
         # Create the new file path with a .jpg extension
-        new_file_path = file_path[:-4] + '.jpg'
-        
+        new_file_path = file_path[:-4] + '_converted_qrproject' + '.jpg'
+
         # Save the image in JPG format
         rgb_image.save(new_file_path, 'JPEG')
-        
+
         print(f"Converted {file_path} to {new_file_path}")
-        return new_file_path
+        return new_file_path, 1
     else:
         print(f"{file_path} is not a PNG file. No conversion needed.")
-        return file_path
+        return file_path, 0
 
 
 def read_qr(path):
-    file_path = convert_png_to_jpg(path)
+    file_path, value = convert_png_to_jpg(path)
 
     image = Image.open(file_path)
     img = np.array(image)
 
-
-    result=model.predict(file_path, confidence=40, overlap=30).json()
-    prediction=result['predictions'][0]
+    result = model.predict(file_path, confidence=40, overlap=30).json()
+    prediction = result['predictions'][0]
     roi_x = int(prediction['x'] - prediction['width'] / 2)
     roi_y = int(prediction['y'] - prediction['height'] / 2)
     roi_width = int(prediction['width'])
     roi_height = int(prediction['height'])
 
-    roi = img[roi_y:roi_y+roi_height, roi_x:roi_x+roi_width]
+    roi = img[roi_y:roi_y + roi_height, roi_x:roi_x + roi_width]
 
-    messagebox.showinfo('QR Data:',decoder(roi))
+    global output_text
+
+    output_text = ['QR Data:', decoder(roi)]
+
+    display_output(output_text)
+
+    messagebox.showinfo('QR Data:', output_text[1])
+
+    if value == 1:
+        os.remove(file_path)
+
+
+def on_enter(event):
+    output_textbox.config(foreground="blue", cursor="hand2")
+
+
+def on_leave(event):
+    output_textbox.config(foreground="black", cursor="")
+
+
+def on_click(event):
+    if is_link(output_text[1]):
+
+        open_link(output_text[1])
+    else:
+        copy_to_clipboard(output_text[1])
+
+
+def is_link(text):
+    # Regex pattern for matching URLs
+    pattern = r'\b((?:(https?|ftp)://)?(?:[\w\-]+\.)+[a-z]{2,6}(?:/[\w\-./?%&=]*)?)\b'
+    if re.match(pattern, text):
+        return True
+    else:
+        return False
+
+
+def copy_to_clipboard(event):
+    # Clear the clipboard
+    scrollable_frame.clipboard_clear()
+    # Append the label's text to the clipboard
+    scrollable_frame.clipboard_append(output_text[1])
+    # Notify the user (optional)
+    messagebox.showinfo('Link/Text copied', "Text copied to clipboard!\nPlease paste the text somewhere before closing the app.")
+
+
+def open_link(link):
+    webbrowser.open_new(link)
+
 
 def decoder(image):
-    gray_img = cv2.cvtColor(image,0)
+    gray_img = cv2.cvtColor(image, 0)
     qr = qr_decode(gray_img)[0]
 
     qrCodeData = qr.data.decode("utf-8")
     return qrCodeData
+
+
+def display_output(output):
+    output_textbox.config(state=tk.NORMAL)
+    output_textbox.delete("1.0", tk.END)
+    output_textbox.insert(tk.END, output[1])
+    output_textbox.config(state=tk.DISABLED)
+
 
 def convert(file):
     # Define the regex patterns for text and image files
     text_file_pattern = re.compile(r'.*\.txt$', re.IGNORECASE)
     image_file_pattern = re.compile(r'.*\.png$', re.IGNORECASE)
     image_file_pattern1 = re.compile(r'.*\.jpg$', re.IGNORECASE)
-   
+    image_file_pattern2 = re.compile(r'.*\.jpeg$', re.IGNORECASE)
+
     if text_file_pattern.match(file):
         return text_to_string(content1.get())
-    elif image_file_pattern.match(file) or image_file_pattern1.match(file):
+    elif image_file_pattern.match(file) or image_file_pattern1.match(file) or image_file_pattern2.match(file):
         return image_to_base64(content1.get())
     else:
         return file
-    
+
+
 def text_to_string(filename):
     try:
         # Open the file in read mode
@@ -100,14 +155,15 @@ def text_to_string(filename):
     except FileNotFoundError:
         messagebox.showerror('Error', 'File Not found')
     except IOError:
-        messagebox.showerror('Error',"Error reading file.")
+        messagebox.showerror('Error', "Error reading file.")
     return file_contents
-    
+
 
 def image_to_base64(image_path):
     with open(image_path, "rb") as image_file:
         base64_str = base64.b64encode(image_file.read()).decode('utf-8')
     return base64_str
+
 
 def open_image():
     file_path = filedialog.askopenfilename(filetypes=[("Image files", "*.jpg;*.jpeg;*.png;*.bmp;*.gif")])
@@ -126,14 +182,13 @@ def load_image(file_path):
 
 
 def generate_qr():
-     # Ensure the save location directory exists
+    # Ensure the save location directory exists
     if not os.path.exists(str(location_var1.get())):
         os.makedirs(str(location_var1.get()))
-    
-    
+
     # Full path for the QR code image
-    qr_path = os.path.join(str(location_var1.get()), str(created_file.get())+".png")
-    
+    qr_path = os.path.join(str(location_var1.get()), str(created_file.get()) + ".png")
+
     # Generate the QR code
     qr = qrcode.QRCode(
         version=1,
@@ -142,16 +197,16 @@ def generate_qr():
         border=4,
     )
 
-    content  = convert(str(content1.get()))
+    content = convert(str(content1.get()))
 
     qr.add_data(content)
     qr.make(fit=True)
-    
+
     img = qr.make_image(fill='black', back_color='white')
-    
+
     # Save the image
     img.save(qr_path)
-    messagebox.showinfo('Task Accomplished',f"QR code saved at {qr_path}")
+    messagebox.showinfo('Task Accomplished', f"QR code saved at {qr_path}")
 
 
 # Main window setup
@@ -192,7 +247,7 @@ location1.pack(pady=5)
 
 label4 = ttk.Label(tab1, text='Enter a name for QR', font='Calibri 15')
 label4.pack(pady=5)
-created_file = tk.StringVar(value="Enter File name")
+created_file = tk.StringVar()
 file_name_creation = ttk.Entry(tab1, textvariable=created_file, width=50, font='Calibri 12')
 file_name_creation.pack(pady=5)
 
@@ -241,6 +296,15 @@ file_entry.bind('<Return>', lambda event: load_image(file_variable.get()))
 
 read_button = ttk.Button(scrollable_frame, text='Read', command=lambda: read_qr(file_variable.get()))
 read_button.pack(pady=20)
+
+# Text widget for displaying output (multiline)
+output_textbox = tk.Text(scrollable_frame, height=10, wrap="word", font='Calibri 12', borderwidth=2, relief="sunken")
+output_textbox.pack(pady=10, fill='both', expand=True)
+output_textbox.config(state=tk.DISABLED)
+
+output_textbox.bind("<Enter>", on_enter)
+output_textbox.bind("<Leave>", on_leave)
+output_textbox.bind("<Button-1>", on_click)
 
 # Add tabs to the notebook
 notebook.add(tab1, text='Generate')
